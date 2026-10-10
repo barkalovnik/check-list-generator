@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Генератор чек-листов</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eceae5;--panel:#fff;--ink:#111;--muted:#666;--line:#d4d1ca;--acc:#111;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1c1c;--panel:#2a2a2a;--ink:#f2f2f2;--muted:#aaa;--line:#444;--acc:#f2f2f2}}
+:root[data-theme="dark"]{--bg:#1c1c1c;--panel:#2a2a2a;--ink:#f2f2f2;--muted:#aaa;--line:#444;--acc:#f2f2f2}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Montserrat,Arial,sans-serif;font-size:14px}
+.app{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:20px;padding:20px;align-items:start}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+.editor{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+@media(max-width:900px){.editor{position:static;max-height:none}}
+.editor h1{font-size:17px;margin:0 0 12px}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 3px}
+input[type=text],textarea{width:100%;font:inherit;padding:7px 8px;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--ink)}
+textarea{resize:vertical;min-height:54px}
+.card{border:1px solid var(--line);border-radius:6px;padding:10px;margin-top:12px}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+button{font:inherit;font-weight:700;padding:8px 12px;border-radius:5px;border:1px solid var(--acc);background:transparent;color:var(--ink);cursor:pointer}
+button.main{background:var(--acc);color:var(--bg)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #2f6fed;outline-offset:2px}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:8px 0 0}
+.chk input{margin:0}
+.stage{overflow-x:auto}
+.sheet{width:794px;min-height:1123px;margin:0 auto;background:#fff;color:#000;padding:48px 52px;position:relative;font-family:Montserrat,Arial,sans-serif;box-shadow:0 2px 14px rgba(0,0,0,.18)}
+.logo{position:absolute;top:24px;right:36px;font-weight:700;font-size:20px;letter-spacing:-.5px}
+.sheet h2{text-align:center;margin:34px 0 34px;font-size:38px;font-weight:300;line-height:1.15}
+.sheet h2 b{display:block;font-weight:700;font-size:44px}
+.crit{display:flex;gap:18px;margin-bottom:22px;align-items:flex-start}
+.box{flex:none;width:62px;height:62px;border:5px solid #000;border-radius:4px;margin-top:4px}
+.ct{font-size:28px;font-weight:300;line-height:1.1;margin:0 0 8px}
+.ct span{background:#000;color:#fff;padding:1px 6px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.cd{font-size:15px;line-height:1.4;margin:0}
+.cd.it{font-style:italic}
+.crit ul{margin:6px 0 0;padding-left:22px;font-size:15px;line-height:1.4}
+.score{text-align:center;font-size:34px;font-weight:300;margin:36px 0 28px}
+.line{font-size:15px;margin:18px 0;display:flex;gap:6px;align-items:flex-end}
+.line i{flex:1;border-bottom:1.5px solid #000;max-width:360px;height:1px}
+.hint{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.4}
+@page{size:A4;margin:0}
+@media print{
+ body{background:#fff}
+ .editor{display:none}
+ .app{display:block;padding:0}
+ .stage{overflow:visible}
+ .sheet{box-shadow:none;margin:0;width:210mm;min-height:297mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="app">
+ <aside class="editor">
+  <h1>Генератор чек-листа</h1>
+  <label for="logo">Логотип (текст в углу)</label>
+  <input type="text" id="logo">
+  <label for="t1">Заголовок, обычный шрифт</label>
+  <input type="text" id="t1">
+  <label for="t2">Заголовок, жирный шрифт</label>
+  <input type="text" id="t2">
+  <label for="score">Строка с итогом (N подставится сам)</label>
+  <input type="text" id="score">
+  <label for="f1">Подпись 1</label>
+  <input type="text" id="f1">
+  <label for="f2">Подпись 2</label>
+  <input type="text" id="f2">
+  <div id="crits"></div>
+  <div class="row">
+   <button id="add">Добавить критерий</button>
+   <button id="print" class="main">Печать / PDF</button>
+  </div>
+  <p class="hint">В окне печати выберите «Сохранить как PDF» и отключите колонтитулы.</p>
+ </aside>
+ <main class="stage"><div class="sheet" id="sheet"></div></main>
+</div>
+<script>
+var S={logo:"школа movavi",t1:"Чек-пойнт №2 по курсу",t2:"Python.Junior",score:"Выполнено: ____ из N критериев",f1:"Имя и фамилия ученика",f2:"Имя и фамилия проверяющего",
+crits:[
+{t:"Программа запускается без ошибок",d:"После запуска программы не высвечивается выделенных красным цветом сообщений, сразу же запускается функционал.",it:false,b:""},
+{t:"Реализована основная функциональность",d:"Создана викторина-тест",it:false,b:"Не менее 5 вопросов на новогоднюю тематику.\nДля каждого вопроса 2-3 варианта ответа."},
+{t:"Реализована система подсчета баллов",d:"После завершения тестирования отображается оценка или количество баллов.",it:true,b:""},
+{t:"Корректная работа if/else конструкций",d:"Ввод разных ответов на вопросы ведет к разным результатам: например, сообщениям “Правильно”/”Неправильно”",it:false,b:""}
+]};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function preview(){
+ var h='<div class="logo">'+esc(S.logo)+'</div><h2>'+esc(S.t1)+'<b>'+esc(S.t2)+'</b></h2>';
+ S.crits.forEach(function(c){
+  var bl=c.b.split("\n").filter(function(x){return x.trim()});
+  h+='<div class="crit"><div class="box"></div><div><p class="ct"><span>'+esc(c.t)+'</span></p>'
+   +(c.d?'<p class="cd'+(c.it?' it':'')+'">'+esc(c.d)+'</p>':'')
+   +(bl.length?'<ul>'+bl.map(function(x){return'<li>'+esc(x)+'</li>'}).join('')+'</ul>':'')
+   +'</div></div>';
+ });
+ h+='<div class="score">'+esc(S.score.replace(/N/g,S.crits.length))+'</div>'
+  +'<div class="line">'+esc(S.f1)+'<i></i></div><div class="line">'+esc(S.f2)+'<i></i></div>';
+ document.getElementById("sheet").innerHTML=h;
+}
+function bindTop(){
+ ["logo","t1","t2","score","f1","f2"].forEach(function(k){
+  var el=document.getElementById(k);el.value=S[k];
+  el.addEventListener("input",function(){S[k]=el.value;preview()});
+ });
+}
+function editor(){
+ var box=document.getElementById("crits");box.innerHTML="";
+ S.crits.forEach(function(c,i){
+  var d=document.createElement("div");d.className="card";
+  d.innerHTML='<label>Критерий '+(i+1)+'</label><input type="text" data-k="t" value="'+esc(c.t)+'">'
+   +'<label>Описание</label><textarea data-k="d">'+esc(c.d)+'</textarea>'
+   +'<label class="chk"><input type="checkbox" data-k="it"'+(c.it?' checked':'')+'> Описание курсивом</label>'
+   +'<label>Пункты списка (каждый с новой строки)</label><textarea data-k="b">'+esc(c.b)+'</textarea>'
+   +'<div class="row"><button data-act="up">Выше</button><button data-act="del">Удалить</button></div>';
+  d.querySelectorAll("[data-k]").forEach(function(el){
+   el.addEventListener("input",function(){c[el.dataset.k]=el.type==="checkbox"?el.checked:el.value;preview()});
+  });
+  d.querySelector('[data-act="del"]').onclick=function(){S.crits.splice(i,1);editor();preview()};
+  d.querySelector('[data-act="up"]').onclick=function(){if(i>0){S.crits.splice(i-1,0,S.crits.splice(i,1)[0]);editor();preview()}};
+  box.appendChild(d);
+ });
+}
+document.getElementById("add").onclick=function(){S.crits.push({t:"Новый критерий",d:"",it:false,b:""});editor();preview()};
+document.getElementById("print").onclick=function(){window.print()};
+bindTop();editor();preview();
+</script>
+</body>
+</html>
